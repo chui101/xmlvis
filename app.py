@@ -1,8 +1,11 @@
 from flask import Flask, request
+from flask_cors import CORS
 import json
 from pymongo import MongoClient
 
 app = Flask(__name__)
+CORS(app)
+
 client = MongoClient(host="localhost",port=27017)
 db = client['test']
 collection = db['naaccr']
@@ -13,9 +16,10 @@ def root():
     data = {"case_count": count, "success": True}
     return json.dumps(data)
 
-@app.route('/counts/')
+@app.route('/counts/',methods=['GET','POST'])
 def getcounts():
-    filter = request.args.get("filter")
+    filter = request.values.get("filter")
+    print(filter)
     response = {}
     if filter != None:
         filter = json.loads(filter)
@@ -50,11 +54,11 @@ def getcounts():
     response['success'] = True
     return json.dumps(response)
 
-@app.route('/charts/bar')
+@app.route('/charts/bar',methods=['GET','POST'])
 def getsitegroupings():
     response = []
     query = []
-    filter = request.args.get("filter")
+    filter = request.values.get("filter")
     if filter != None:
         filter = json.loads(filter)
         query.append({'$match': filter})
@@ -66,4 +70,4 @@ def getsitegroupings():
     return json.dumps(response)
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')
