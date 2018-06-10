@@ -1,6 +1,7 @@
 from flask import Flask, request
 from flask_cors import CORS
 import json
+from bson import BSON
 from pymongo import MongoClient
 
 app = Flask(__name__)
@@ -22,8 +23,8 @@ def getcounts():
     print(filter)
     response = {}
     if filter != None:
-        filter = json.loads(filter)
         response['filter'] = filter
+        filter = BSON.decode(filter)
     response['data'] = []
     things_to_count = ['sex','primarySite','vitalStatus','ageAtDiagnosis','race1']
     for groupby in things_to_count:
@@ -60,8 +61,8 @@ def getsitegroupings():
     query = []
     filter = request.values.get("filter")
     if filter != None:
-        filter = json.loads(filter)
         query.append({'$match': filter})
+        filter = BSON.decode(filter)
 
     query.append({'$group': {'_id': '$primarySite', 'count': {'$sum': 1}}})
     result = collection.aggregate(query)
