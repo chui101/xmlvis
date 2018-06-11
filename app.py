@@ -5,6 +5,7 @@ import kaplanmeier
 import csv
 from pymongo import MongoClient
 
+state_postal_fips_mapping = {}
 app = Flask(__name__)
 CORS(app)
 
@@ -12,12 +13,15 @@ client = MongoClient(host="localhost",port=27017)
 db = client['test']
 collection = db['naaccr']
 
+def load_state_fips():
+    if len(state_postal_fips_mapping) == 0:
+        with open("statefips.csv", mode='r') as infile:
+            reader = csv.DictReader(infile)
+            for row in reader:
+                state_postal_fips_mapping[row['usps']] = row['fips']
+
 def state_to_fips(state):
-    with open("statefips.csv",mode='r') as infile:
-        reader = csv.DictReader(infile)
-        for row in reader:
-            if row['usps'] == state:
-                return row['fips']
+    return state_postal_fips_mapping[state.upper()]
 
 def get_dbfilter_from_request():
     dbfilter = request.values.get("filter")
@@ -108,6 +112,7 @@ def get_geo_data():
 @app.route('/charts/map/<state>',methods=['GET', 'POST'])
 def get_geo_data_by_state(state):
     response = []
+    load_state_fips()
     state = state.upper()
 
     dbfilter = get_dbfilter_from_request()
@@ -118,10 +123,8 @@ def get_geo_data_by_state(state):
     else:
         dbfilter = {'$and':[dbfilter,{"addrAtDxState": state}]}
 
-    print(dbfilter)
     result = get_groupings_from_db('countyAtDx', dbfilter)
     for row in result:
-        print(row)
         fips_county = str(state_to_fips(state)) + str(row['_id'])
         response.append({'county': fips_county, 'count':row['count']})
     return Response(json.dumps(response),mimetype='application/json')
@@ -139,13 +142,10 @@ def get_kaplan_meier_by_stage():
             stage_dbfilter = {"majorStageGrp":stage}
         result = collection.find(stage_dbfilter)
         km = kaplanmeier.kaplan_meier()
-        count = 0
         for row in result:
-            count += 1
-            km.readFromJson(row)
-        if count > 0:
-            km.buildKaplanMeier(count)
-            response['treatments'].append(km.buildJson())
+            km.add_record(row)
+        km.calculate()
+        response['treatments'].append(km.to_json())
         result.close()
     return Response(json.dumps(response),mimetype='application/json')
 

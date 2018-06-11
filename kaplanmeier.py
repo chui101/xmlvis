@@ -4,74 +4,50 @@ from datetime import datetime
 class kaplan_meier:
 
     def __init__(self):
-        self.kmc = []
+        self.km_counts = {}
+        self.population = 0
 
-    def buildJson(self):
-        jsonbody= []
-        i=0
-        while i<len(self.kmc):
-            test = {
-                "t": self.kmc[i][0],
-                "d": self.kmc[i][1],
-                "n": self.kmc[i][2]
+    def to_json(self):
+        result= []
+        for time in sorted(self.km_counts):
+            row = {
+                "t": time,
+                "d": self.km_counts[time][0],
+                "n": self.km_counts[time][1]
 
             }
-            jsonbody.append(test)
-            i+=1
-        return jsonbody
+            result.append(row)
+        return result
 
 
     # reading from a single JSON
-    def readFromJson(self,Json):
+    def add_record(self,json):
+        self.population += 1
+        vital_status = json["vitalStatus"]
+        follow_up_length = json['lengthOfFollowup']
+        if follow_up_length < 0:
+            follow_up_length = 0
 
-        data = Json
-        vitalstatus = data["vitalStatus"]
-        # calculate number of days
-        t = data['lengthOfFollowup']
-        if t < 0:
-            t = 0
+        if follow_up_length not in self.km_counts:
+            self.km_counts[follow_up_length] = [0,0]
 
-        # performing linear search everytime
-        if(len(self.kmc)==0):
-            if (vitalstatus == 0):
-                self.kmc.append([t , 1, 0])
-            else:
-                self.kmc.append([t, 0, -1])
-
-
+        if vital_status == 0:
+            self.km_counts[follow_up_length][0] += 1
         else:
-            i = 0
-            while i < len(self.kmc):
-                if (self.kmc[i][0] == t):
-                    if (vitalstatus == 0):
-                        self.kmc[i][1] += 1
-                    else:
-                        self.kmc[i][2] -= 1
+            self.km_counts[follow_up_length][1] -= 1
 
-                    break
-                i+=1
-
-            if (i==len(self.kmc)):
-                if (vitalstatus == 0):
-                    self.kmc.append([t, 1, 0])
-                else:
-                    self.kmc.append([t, 0, -1])
-
-        return self.kmc
-
-
-    def buildKaplanMeier(self, totalpopulation):
-        self.kmc.sort()
-        self.kmc[0][2] = totalpopulation - self.kmc[0][1] + self.kmc[0][2]
-        #print(0, " ", self.kmc[0][0], "-", self.kmc[0][1], "-", self.kmc[0][2])
-        i = 1
-        while i < len(self.kmc):
-            self.kmc[i][2] = self.kmc[i - 1][2] - self.kmc[i][1] + self.kmc[i][2]
-            #if self.kmc[i][1] > 0:
-             #   print(i, " ", self.kmc[i][0], "-", self.kmc[i][1], "-", self.kmc[i][2])
-            i = i + 1
-
-        return self.kmc
+    def calculate(self):
+        time_points = sorted(self.km_counts)
+        for i in range(len(time_points)):
+            # start calculating final numbers with the final population count
+            if i == 0:
+                time = time_points[i]
+                self.km_counts[time][1] = self.population - self.km_counts[time][0] + self.km_counts[time][1]
+            # calculate each subsequent time point using the remaining population from the previous time point
+            else:
+                time = time_points[i]
+                prev_time = time_points[i-1]
+                self.km_counts[time][1] = self.km_counts[prev_time][1] - self.km_counts[time][0] + self.km_counts[time][1]
 
 
 
