@@ -116,7 +116,6 @@ def get_geo_data():
 def get_geo_data_by_county():
     response = []
     load_state_fips()
-    state = state.upper()
 
     dbfilter = get_dbfilter_from_request()
     if dbfilter is None:
