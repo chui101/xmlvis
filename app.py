@@ -7,6 +7,7 @@ import csv
 from pymongo import MongoClient
 
 state_postal_fips_mapping = {}
+us_states = []
 app = Flask(__name__)
 CORS(app)
 
@@ -20,6 +21,7 @@ def load_state_fips():
             reader = csv.DictReader(infile)
             for row in reader:
                 state_postal_fips_mapping[row['usps']] = row['fips']
+                us_states.append(row['usps'])
 
 def state_to_fips(state):
     return state_postal_fips_mapping[state.upper()]
@@ -60,11 +62,11 @@ def get_counts():
             over65 = 0
             for row in result:
                 if row['_id'] < 18:
-                    under18 += 1
+                    under18 += row['count']
                 elif row['_id'] >= 18 and row['_id'] < 65:
-                    between18and65 += 1
+                    between18and65 += row['count']
                 elif row['_id'] >= 65:
-                    over65 += 1
+                    over65 += row['count']
             response['data'].append({groupby:'<18','count':under18})
             response['data'].append({groupby:'18-65','count':between18and65})
             response['data'].append({groupby:'>65','count':over65})
@@ -107,6 +109,27 @@ def get_geo_data():
     result = get_groupings_from_db('addrAtDxState',dbfilter)
     for row in result:
         response.append({'state':row['_id'], 'count':row['count']})
+    return Response(json.dumps(response),mimetype='application/json')
+
+
+@app.route('/charts/countymap',methods=['GET', 'POST'])
+def get_geo_data_by_county():
+    response = []
+    load_state_fips()
+    state = state.upper()
+
+    dbfilter = get_dbfilter_from_request()
+    if dbfilter is None:
+        dbfilter = {"addrAtDxState": state}
+    elif '$and' in dbfilter:
+        dbfilter['$and'].append({"addrAtDxState": state})
+    else:
+        dbfilter = {'$and':[dbfilter,{"addrAtDxState": state}]}
+
+    result = get_groupings_from_db('countyAtDx', dbfilter)
+    for row in result:
+        fips_county = str(state_to_fips(state)) + str(row['_id'])
+        response.append({'county': fips_county, 'count':row['count']})
     return Response(json.dumps(response),mimetype='application/json')
 
 
