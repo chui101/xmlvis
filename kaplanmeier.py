@@ -1,10 +1,10 @@
-class kaplan_meier:
+class KaplanMeier:
 
     def __init__(self):
         self.km_counts = {}
         self.population = 0
 
-    def to_json(self):
+    def to_timepoints(self):
         result= []
         for time in sorted(self.km_counts):
             row = {
