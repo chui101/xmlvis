@@ -116,19 +116,19 @@ def get_geo_data():
 def get_geo_data_by_county():
     response = []
     load_state_fips()
+    for state in us_states:
+        dbfilter = get_dbfilter_from_request()
+        if dbfilter is None:
+            dbfilter = {"addrAtDxState": state}
+        elif '$and' in dbfilter:
+            dbfilter['$and'].append({"addrAtDxState": state})
+        else:
+            dbfilter = {'$and':[dbfilter,{"addrAtDxState": state}]}
 
-    dbfilter = get_dbfilter_from_request()
-    if dbfilter is None:
-        dbfilter = {"addrAtDxState": state}
-    elif '$and' in dbfilter:
-        dbfilter['$and'].append({"addrAtDxState": state})
-    else:
-        dbfilter = {'$and':[dbfilter,{"addrAtDxState": state}]}
-
-    result = get_groupings_from_db('countyAtDx', dbfilter)
-    for row in result:
-        fips_county = str(state_to_fips(state)) + str(row['_id'])
-        response.append({'county': fips_county, 'count':row['count']})
+        result = get_groupings_from_db('countyAtDx', dbfilter)
+        for row in result:
+            fips_county = str(state_to_fips(state)) + str(row['_id'])
+            response.append({'county': fips_county, 'count':row['count']})
     return Response(json.dumps(response),mimetype='application/json')
 
 
