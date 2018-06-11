@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, Response
 from flask_cors import CORS
 import json
 import kaplanmeier
@@ -12,12 +12,6 @@ client = MongoClient(host="localhost",port=27017)
 db = client['test']
 collection = db['naaccr']
 
-@app.route('/')
-def root():
-    count = collection.find().count()
-    data = {"case_count": count, "success": True}
-    return json.dumps(data)
-
 def state_to_fips(state):
     with open("statefips.csv",mode='r') as infile:
         reader = csv.DictReader(infile)
@@ -26,7 +20,7 @@ def state_to_fips(state):
                 return row['fips']
 
 def get_dbfilter_from_request():
-    dbfilter = request.values.get("dbfilter")
+    dbfilter = request.values.get("filter")
     if dbfilter is not None:
         dbfilter = json.loads(dbfilter)
     return dbfilter
@@ -38,6 +32,12 @@ def get_groupings_from_db(field_name, dbfilter = None):
     query.append({'$group': {'_id': '$' + field_name, 'count': {'$sum': 1}}})
     result = collection.aggregate(query)
     return result
+
+@app.route('/')
+def root():
+    count = collection.find().count()
+    data = {"case_count": count}
+    return Response(json.dumps(data),mimetype='application/json')
 
 @app.route('/counts/',methods=['GET','POST'])
 def get_counts():
@@ -69,7 +69,7 @@ def get_counts():
         result.close()
 
     response['success'] = True
-    return json.dumps(response)
+    return Response(json.dumps(response),mimetype='application/json')
 
 @app.route('/charts/bar',methods=['GET','POST'])
 def get_site_groupings():
@@ -78,7 +78,7 @@ def get_site_groupings():
     result = get_groupings_from_db('primarySite',dbfilter)
     for row in result:
         response.append({'site':row['_id'], 'count':row['count']})
-    return json.dumps(response)
+    return Response(json.dumps(response),mimetype='application/json')
 
 
 @app.route('/charts/pie', methods=['GET', 'POST'])
@@ -91,7 +91,7 @@ def get_sex_counts():
             response[1] = row['count']
         if row['_id'] == "2":
             response[0] = row['count']
-    return json.dumps(response)
+    return Response(json.dumps(response),mimetype='application/json')
 
 
 
@@ -102,7 +102,7 @@ def get_geo_data():
     result = get_groupings_from_db('addrAtDxState',dbfilter)
     for row in result:
         response.append({'state':row['_id'], 'count':row['count']})
-    return json.dumps(response)
+    return Response(json.dumps(response),mimetype='application/json')
 
 
 @app.route('/charts/map/<state>',methods=['GET', 'POST'])
@@ -124,7 +124,7 @@ def get_geo_data_by_state(state):
         print(row)
         fips_county = str(state_to_fips(state)) + str(row['_id'])
         response.append({'county': fips_county, 'count':row['count']})
-    return json.dumps(response)
+    return Response(json.dumps(response),mimetype='application/json')
 
 
 @app.route('/charts/survival', methods=['GET', 'POST'])
@@ -147,18 +147,19 @@ def get_kaplan_meier_by_stage():
             km.buildKaplanMeier(count)
             response['treatments'].append(km.buildJson())
         result.close()
-    return json.dumps(response)
+    return Response(json.dumps(response),mimetype='application/json')
 
 
 @app.route('/export/', methods=['GET', 'POST'])
 def export_data_to_json():
     response = []
     dbfilter = get_dbfilter_from_request()
-    result = collection.find(dbfilter)
+    # limit results to 1000
+    result = collection.find(dbfilter).limit(1000)
     for row in result:
         del row['_id']
         response.append(row)
-    return json.dumps(response)
+    return Response(json.dumps(response, indent=4),mimetype='application/json')
 
 
 if __name__ == '__main__':
