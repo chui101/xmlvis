@@ -11,7 +11,6 @@ class KaplanMeier:
                 "t": time,
                 "d": self.km_counts[time][0],
                 "n": self.km_counts[time][1]
-
             }
             result.append(row)
         return result
@@ -28,7 +27,7 @@ class KaplanMeier:
         if follow_up_length not in self.km_counts:
             self.km_counts[follow_up_length] = [0,0]
 
-        if vital_status == 0:
+        if vital_status == '0':
             self.km_counts[follow_up_length][0] += 1
         else:
             self.km_counts[follow_up_length][1] -= 1
