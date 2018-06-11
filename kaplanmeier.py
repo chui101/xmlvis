@@ -56,7 +56,7 @@ if __name__ == "__main__":
         { "_id" : "5b1d4fd78e5651446c4455ce", "patientIdNumber" : 1324, "dateOfDiagnosis" : 20120130, "addrAtDxState" : "TX", "derivedAjcc6StageGrp" : "01", "lengthOfFollowup" : 0, "sex" : "1", "race1" : "96", "dateOfLastContact" : 20120130, "majorStageGrp" : "0", "primarySite" : "C67", "ageAtDiagnosis" : 72, "derivedAjcc7StageGrp" : 10, "vitalStatus" : "1" },
         { "_id" : "5b1d4fd88e5651446c445634", "patientIdNumber" : 1426, "dateOfDiagnosis" : 20100306, "addrAtDxState" : "NY", "derivedAjcc6StageGrp" : "01", "lengthOfFollowup" : 0, "sex" : "2", "race1" : "99", "dateOfLastContact" : 20100306, "majorStageGrp" : "0", "primarySite" : "C67", "ageAtDiagnosis" : 70, "derivedAjcc7StageGrp" : 10, "vitalStatus" : "1" }
     ]
-    km=kaplan_meier()
+    km=KaplanMeier()
     a = []
     for record in jsonstring:
         a+=km.readFromJson(record)
